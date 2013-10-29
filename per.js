@@ -133,5 +133,12 @@ module.exports = (function() {
         return result;
     };
 
+    var singleton = create();
+    Object.keys(prototype).forEach(function(key) {
+        create[key] = function() {
+            return prototype[key].apply(singleton, arguments);
+        }
+    });
+
     return create;
 })();

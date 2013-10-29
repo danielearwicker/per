@@ -80,10 +80,10 @@ module.exports = (function() {
         });
     };
 
-    prototype.read = function(input, each) {
+    prototype.read = function(input, each, inputThis) {
         var self = this;
         if (typeof input === 'function') {
-            input(function(value) {
+            input.call(inputThis, function(value) {
                 self.read(value, each);
             });
         } else {
@@ -95,41 +95,41 @@ module.exports = (function() {
         }
     };
 
-    prototype.reduce = function(input, reducer, seed) {
+    prototype.reduce = function(input, reducer, seed, inputThis) {
         var result = seed, started = arguments.length == 2;
         this.read(input, function(value) {
             result = started ? reducer(result, value) : value;
             started = true;
-        });
+        }, inputThis);
         return result;
     };
 
-    prototype.sum = function(input) {
-        return this.reduce(input, function(l, r) { return l + r }, 0);
+    prototype.sum = function(input, inputThis) {
+        return this.reduce(input, function(l, r) { return l + r }, 0, inputThis);
     };
 
-    prototype.toArray = function(input) {
+    prototype.toArray = function(input, inputThis) {
         var results = [];
         this.read(input, function(value) {
             results.push(value);
-        });
+        }, inputThis);
         return results;
     };
 
-    prototype.first = function(input) {
+    prototype.first = function(input, inputThis) {
         var result;
         this.read(input, function(value) {
             result = value;
             return true;
-        });
+        }, inputThis);
         return result;
     };
 
-    prototype.last = function(input) {
+    prototype.last = function(input, inputThis) {
         var result;
         this.read(input, function(value) {
             result = value;
-        });
+        }, inputThis);
         return result;
     };
 

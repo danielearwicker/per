@@ -2,22 +2,37 @@ module.exports = (function() {
 
     var prototype = {};
 
-    function create(func) {
+    function create(func, thisRef) {
+        if (func && func.each) {
+            return func;
+        }
+        if (typeof func !== 'function') {
+            var value = func;
+            func = Array.isArray(func)
+                ? function(emit) {
+                return value.some(emit);
+            } : function(emit) {
+                return emit(value);
+            };
+        } else if (thisRef) {
+            var realFunc = func;
+            func = function(emit, value) {
+                realFunc.call(thisRef, emit, value);
+            }
+        }
         return Object.create(prototype, {
-            func: { value: func }
+            each: { value: func }
         });
     }
 
-    prototype.per = function(next) {
-        var first = this.func;
-        var second = (next && next.func) || next;
-        return !second ? this : !first
-            ? (next.func ? next : create(next))
-            : create(function(value, each) {
-                return first(value, function(firstVal) {
-                    return second(firstVal, each);
-                });
-            });
+    prototype.per = function(next, thisRef) {
+        var first = this.each;
+        var second = create(next, thisRef).each;
+        return create(function(emit, value) {
+            return first(function(firstVal) {
+                return second(emit, firstVal);
+            }, value);
+        });
     };
 
     function lambda(expression) {
@@ -28,15 +43,15 @@ module.exports = (function() {
         if (typeof mapFunc === 'string') {
             mapFunc = lambda(mapFunc);
         }
-        return this.per(function(value, each) {
-            return each(mapFunc(value));
+        return this.per(function(emit, value) {
+            return emit(mapFunc(value));
         });
     };
 
     prototype.filter = function(predicate) {
-        return this.per(function(value, each) {
+        return this.per(function(emit, value) {
             if (predicate(value)) {
-                return each(value);
+                return emit(value);
             }
         });
     };
@@ -48,138 +63,106 @@ module.exports = (function() {
     };
 
     prototype.skip = function(count) {
-        return this.per(function(value, each) {
+        return this.per(function(emit, value) {
             if (count > 0) {
                 count--;
                 return false;
             }
-            return each(value);
+            return emit(value);
         });
     };
 
     prototype.take = function(count) {
-        return this.per(function(value, each) {
+        return this.per(function(emit, value) {
             if (count <= 0) {
                 return true;
             }
             count--;
-            return each(value);
+            return emit(value);
         });
     };
 
     prototype.until = function(untilFunc) {
-        return this.per(function(value, each) {
+        return this.per(function(emit, value) {
             if (untilFunc(value)) {
                 return true;
             }
-            return each(value);
+            return emit(value);
         });
     };
 
     prototype.forEach = function() {
-        return this.per(function(array, each) {
+        return this.per(function(array, emit) {
             return !Array.isArray(array)
-                ? each(value)
+                ? emit(value)
                 : array.some(function(value) {
-                    return each(value);
+                    return emit(value);
                 });
         });
     };
 
-    prototype.push = function(value, each) {
-        if (this.func) {
-            this.func(value, each);
-        } else {
-            each(value);
-        }
-    };
-
-    prototype.read = function(input, each, inputThis) {
-        var self = this;
-        if (typeof input === 'function') {
-            input.call(inputThis, function(value) {
-                self.push(value, each);
-            });
-        } else {
-            if (Array.isArray(input)) {
-                input.forEach(function(value) {
-                    self.push(value, each);
-                });
-            } else {
-                self.push(input, each);
-            }
-        }
-    };
-
-    prototype.reduce = function(input, reducer, seed, inputThis) {
+    prototype.reduce = function(reducer, seed) {
         var result = seed, started = arguments.length == 2;
-        this.read(input, function(value) {
+        return this.per(function(emit, value) {
             result = started ? reducer(result, value) : value;
             started = true;
-        }, inputThis);
-        return result;
+            emit(result);
+        });
     };
 
-    prototype.sum = function(input, inputThis) {
-        return this.reduce(input, function(l, r) { return l + r }, 0, inputThis);
+    prototype.sum = function() {
+        return this.reduce(function(l, r) { return l + r });
     };
 
-    prototype.toArray = function(input, inputThis) {
+    prototype.all = function() {
         var results = [];
-        this.read(input, function(value) {
+        this.each(function(value) {
             results.push(value);
-        }, inputThis);
+        });
         return results;
     };
 
-    prototype.first = function(input, inputThis) {
+    prototype.first = function() {
         var result, got;
-        this.read(input, function(value) {
+        this.each(function(value) {
             if (!got) {
                 result = value;
                 got = true;
             }
             return true;
-        }, inputThis);
+        });
         return result;
     };
 
-    prototype.last = function(input, inputThis) {
+    prototype.last = function() {
         var result;
-        this.read(input, function(value) {
+        this.each(function(value) {
             result = value;
-        }, inputThis);
+        });
         return result;
     };
 
-    prototype.some = function(input, inputThis) {
+    prototype.some = function() {
         var result = false;
-        this.read(input, function(value) {
+        this.each(function(value) {
             if (value) {
                 result = true;
                 return true;
             }
-        }, inputThis);
+        });
         return result;
     };
 
-    prototype.every = function(input, inputThis) {
+    prototype.every = function() {
         var result = true;
-        this.read(input, function(value) {
+        this.each(function(value) {
             if (!value) {
                 result = false;
                 return true;
             }
-        }, inputThis);
+        });
         return result;
     };
-
-    var singleton = create();
-    Object.keys(prototype).forEach(function(key) {
-        create[key] = function() {
-            return prototype[key].apply(singleton, arguments);
-        }
-    });
 
     return create;
 })();

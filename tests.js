@@ -14,13 +14,13 @@ var assert = function(expected, actual) {
         console.error('');
         failed++;
     } else {
-        console.log(actual);
+        console.log('    Good: ' + actual);
     }
 };
 
 // Super minimal usage, push a single value - does nothing helpful:
 var result;
-per('hi').each(function(value) { result = value; });
+per('hi').forEach(function(value) { result = value; });
 assert('hi', result);
 
 // Slightly more helpful, grab first output as return value:
@@ -40,27 +40,49 @@ assert([1, 2, 3], per([[1, 2, 3]]).first());
 assert([1, 2, 3], per([1, 2, 3]).all());
 
 // Map (can accept a string expression suffix or a function)
-assert([2, 4, 6], per([1, 2, 3]).map('*2').all());
+assert([2, 4, 6], per([1, 2, 3]).map('x*2').all());
 assert([2, 4, 6], per([1, 2, 3]).map(function(x) { return x*2; }).all());
 
-// Sum (built on reduce, note: emits all intermediate results, so use last)
-assert(12, per([1, 2, 3]).map('*2').sum().last());
-assert([2, 6, 12], per([1, 2, 3]).map('*2').sum().all());
+// Not (built on map)
+assert([false, true, true, false, true, false],
+    per([true, false, '', 5, null, []]).not().all())
+
+// Reduce emits values by combining pairs of inputs
+var concat = function(left, right) { return left + ' ' + right; }
+
+// Single input is held but not emitted (waits for another)
+var wasCalled = false;
+per('hi').reduce(concat).forEach(function(value) {
+    wasCalled = true;
+});
+assert(false, wasCalled);
+
+// If two inputs, get one output
+assert(['hi ho'],
+   per(['hi', 'ho']).reduce(concat).all());
+// If three inputs get two outputs, and so on
+assert(['hi ho', 'hi ho silver'],
+   per(['hi', 'ho', 'silver']).reduce(concat).all());
+
+// Sum (built on reduce)
+assert([2, 6, 12], per([1, 2, 3]).map('x*2').sum().all());
+// Use last to get final outcome
+assert(12, per([1, 2, 3]).map('x*2').sum().last());
 
 // Truthy (built on filter, works just like JS Array's filter)
 assert([4, 'str', true, {}], per([0 , 4, '', 'str', false, true, null, {}]).truthy().all());
 
-// Again like JS Array:
-assert(true, per([1, 'hi', {}]).every());
-assert(false, per([1, '', {}]).every());
-assert(true, per([1, 'hi', {}]).some());
-assert(true, per([1, '', {}]).some());
-assert(false, per([0, '', null]).some());
+// More built-in reducers
+assert([true, true, true], per([1, 'hi', {}]).and().all());
+assert([true, false, false], per([1, '', {}]).and().all());
+assert([true, true, true], per([1, 'hi', {}]).or().all());
+assert([false, true, true], per([0, 'hi', null]).or().all());
+assert([false, false, false], per([0, '', null]).or().all());
 
 // Input can be a function that generates values
-var odds = function(each) {
+var odds = function(emit) {
     for (var n = 1; n < 15; n+=2) {
-        each(n);
+        emit(n);
     }
 };
 
@@ -69,12 +91,12 @@ assert([7, 9, 11, 13], per(odds).skip(3).all());
 assert([5, 7, 9], per(odds).skip(2).take(3).all());
 
 // Custom operators - a stateless one:
-var censor = function(each, value) {
+var censor = function(emit, value) {
     if (typeof value === 'string' && value.length <= 5) {
-        each(value);
+        emit(value);
     } else {
-        each('SORRY');
-        each('REDACTED');
+        emit('SORRY');
+        emit('REDACTED');
     }
 };
 
@@ -85,8 +107,8 @@ assert(['This', 'array', 'only', 'SORRY', 'REDACTED', 'short', 'SORRY', 'REDACTE
 // Operators can be stateful - best to wrap them in a function to create fresh ones:
 var indexes = function() {
     var counter = 0;
-    return function(each, value) {
-        each([counter++, value]);
+    return function(emit, value) {
+        emit([counter++, value]);
     }
 };
 assert([[0, 'first'], [1, 'second'], [2, 'third']], per(['first', 'second', 'third']).per(indexes()).all());
@@ -96,10 +118,10 @@ var i = indexes();
 assert([[0, 'first'], [1, 'second'], [2, 'third']], per(['first', 'second', 'third']).per(i).all());
 assert([[3, 'first'], [4, 'second'], [5, 'third']], per(['first', 'second', 'third']).per(i).all());
 
-// Operators can work like bind/select many because can call 'each' multiple times:
-var dup = function(each, value) {
-    each(value);
-    each(value);
+// Operators can work like bind/SelectMany because can emit multiple times:
+var dup = function(emit, value) {
+    emit(value);
+    emit(value);
 };
 
 assert(['a', 'a', 'b', 'b', 'c', 'c'], per(['a', 'b', 'c']).per(dup).all());
@@ -110,25 +132,29 @@ assert([[0, 'a'], [1, 'a'], [2, 'b'], [3, 'b'], [4, 'c'], [5, 'c']],
 assert([[0, 'a'], [0, 'a'], [1, 'b'], [1, 'b'], [2, 'c'], [2, 'c']],
     per(['a', 'b', 'c']).per(indexes()).per(dup).all());
 
-// As shown with 'odds', input can be a generator function, but what if it's a pesky method on an object
-// and hence needs a this reference?
+// As shown with 'odds', input can be a generator function, but what if it's a pesky
+// method on an object and hence needs a this reference?
 function TestClass() {
     this.a = 'a';
     this.b = 'b';
     this.c = 'c';
 }
-TestClass.prototype.things = function(each) {
+TestClass.prototype.things = function(emit) {
     // depends on this...
-    each(this.a);
-    each(this.b);
-    each(this.c)
+    emit(this.a);
+    emit(this.b);
+    emit(this.c);
 };
 
 var testObj = new TestClass();
 // Need to pass second parameter to per, to provide correct 'this'
 assert(['a', 'b', 'c'], per(testObj.things, testObj).all());
 
+// Flatten array of arrays
+assert([1, 2, 3, 4, 5, 6], per([[1], [2,3,4], [5,6]]).flatten().all());
+
 if (failed === 0) {
     console.log('');
     console.log('All good');
 }
+

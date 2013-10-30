@@ -41,6 +41,12 @@ module.exports = (function() {
         });
     };
 
+    prototype.truthy = function() {
+        return this.filter(function(value) {
+            return !!value;
+        });
+    };
+
     prototype.skip = function(count) {
         return this.per(function(value, each) {
             if (count > 0) {
@@ -80,17 +86,27 @@ module.exports = (function() {
         });
     };
 
+    prototype.push = function(value, each) {
+        if (this.func) {
+            this.func(value, each);
+        } else {
+            each(value);
+        }
+    };
+
     prototype.read = function(input, each, inputThis) {
         var self = this;
         if (typeof input === 'function') {
             input.call(inputThis, function(value) {
-                self.read(value, each);
+                self.push(value, each);
             });
         } else {
-            if (self.func) {
-                self.func(input, each);
+            if (Array.isArray(input)) {
+                input.forEach(function(value) {
+                    self.push(value, each);
+                });
             } else {
-                each(input);
+                self.push(input, each);
             }
         }
     };
@@ -117,9 +133,12 @@ module.exports = (function() {
     };
 
     prototype.first = function(input, inputThis) {
-        var result;
+        var result, got;
         this.read(input, function(value) {
-            result = value;
+            if (!got) {
+                result = value;
+                got = true;
+            }
             return true;
         }, inputThis);
         return result;
@@ -129,6 +148,28 @@ module.exports = (function() {
         var result;
         this.read(input, function(value) {
             result = value;
+        }, inputThis);
+        return result;
+    };
+
+    prototype.some = function(input, inputThis) {
+        var result = false;
+        this.read(input, function(value) {
+            if (value) {
+                result = true;
+                return true;
+            }
+        }, inputThis);
+        return result;
+    };
+
+    prototype.every = function(input, inputThis) {
+        var result = true;
+        this.read(input, function(value) {
+            if (!value) {
+                result = false;
+                return true;
+            }
         }, inputThis);
         return result;
     };

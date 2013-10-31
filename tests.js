@@ -153,6 +153,33 @@ assert(['a', 'b', 'c'], per(testObj.things, testObj).all());
 // Flatten array of arrays
 assert([1, 2, 3, 4, 5, 6], per([[1], [2,3,4], [5,6]]).flatten().all());
 
+// multicasting
+var numbers = per(function(each) {
+    for (var n = 0; n < 100; n++) {
+        each(n);
+    }
+});
+
+var evenResults = [], oddResults = [];
+
+var split = numbers.multicast(
+    per().filter('Math.floor(x/2)*2 == x').take(72).into(evenResults),
+    per().filter('Math.floor(x/2)*2 != x').take(68).into(oddResults)
+);
+
+split.submit(); // causes numbers to be sent
+assert([0, 2, 4, 6], evenResults.slice(0, 4));
+assert([1, 3, 5, 7], oddResults.slice(0, 4));
+
+assert([0, 1, 2, 3, 4], split.all().slice(0, 5));
+    // causes numbers to be sent again AND captures
+    // multicast passthrough
+
+// NB our 'into' bindings are still present, so have captured 2nd set of results
+// but we used take() to limit array lengths, so neither has all 100 results
+assert(72, evenResults.length);
+assert(68, oddResults.length);
+
 if (failed === 0) {
     console.log('');
     console.log('All good');

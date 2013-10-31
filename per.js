@@ -39,13 +39,10 @@
     Per.prototype.per = function(valOrFunc, bindThis) {
         var first = this.forEach;
         var second = toFunc(valOrFunc && valOrFunc.forEach || valOrFunc, bindThis);
-        var secondEmit;
-        function firstEmit(firstVal) {
-            return second(secondEmit, firstVal);
-        }
         return create(function(emit, value) {
-            secondEmit = emit;
-            return first(firstEmit, value);
+            return first(function(firstVal) {
+                return second(emit, firstVal);
+            }, value);
         });
     };
 
@@ -134,7 +131,7 @@
         return this.listen(function(value) {
             var quit = true;
             destinations.forEach(function(destination) {
-                if (destination(ignore, value) !== true) {
+                if (!destination(ignore, value)) {
                     quit = false;
                 }
             });
@@ -219,7 +216,7 @@
     Per.prototype.first = function() {
         var results = { limit: 1 };
         this.monitor(results).submit();
-        return results.count === 1 ? results.first : (void 0);
+        return results.count > 0 ? results.first : (void 0);
     };
 
     Per.prototype.last = function() {
@@ -254,7 +251,7 @@
         return create(function(emit) {
             function step() {
                 if (emit(counter++) !== true) {
-                    setTimeout(step, 500);
+                    setTimeout(step, ms);
                 }
             }
             step();

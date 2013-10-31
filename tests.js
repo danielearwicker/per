@@ -154,17 +154,19 @@ assert(['a', 'b', 'c'], per(testObj.things, testObj).all());
 assert([1, 2, 3, 4, 5, 6], per([[1], [2,3,4], [5,6]]).flatten().all());
 
 // multicasting
-var numbers = per(function(each) {
+var numbers = per(function(emit) {
     for (var n = 0; n < 100; n++) {
-        each(n);
+        emit(n);
     }
 });
+
+assert(0, numbers.first());
 
 var evenResults = [], oddResults = [];
 
 var split = numbers.multicast(
-    per().filter('Math.floor(x/2)*2 == x').take(72).into(evenResults),
-    per().filter('Math.floor(x/2)*2 != x').take(68).into(oddResults)
+    per().filter('!(x%2)').take(72).into(evenResults),
+    per().filter('x%2').take(68).into(oddResults)
 );
 
 split.submit(); // causes numbers to be sent
@@ -184,4 +186,3 @@ if (failed === 0) {
     console.log('');
     console.log('All good');
 }
-

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Per</title>
+    <script src="per.js"></script>
+    <style>
+        .column {
+            display: inline-block;
+            vertical-align: top;
+            width: 120px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div id="a" class="column"></div>
+    <div id="b" class="column"></div>
+    <div id="c" class="column"></div>
+    <script>
+        function log(sel) {
+            var elem = document.querySelector(sel);
+            return function(val) {
+                var item = document.createElement('div');
+                item.appendChild(document.createTextNode(val));
+                elem.appendChild(item);
+            };
+        }
+
+        var p = per.pulse(500)
+                   .take(17)
+                   .listen(log('#a'))
+                   .per(function(emit, value) {
+                        emit(value * 2);
+                        emit(value * 3);
+                    })
+                   .take(20)
+                   .listen(log('#b'))
+                   .sum()
+                   .take(15)
+                   .listen(log('#c'))
+                   .submit();
+
+    </script>
+</body>
+</html>

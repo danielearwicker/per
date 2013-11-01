@@ -182,6 +182,13 @@ assert([0, 1, 2, 3, 4], split.all().slice(0, 5));
 assert(72, evenResults.length);
 assert(68, oddResults.length);
 
+assert([4, 2], per(4).concat(2).all());
+assert([4, 2, 1], per(4).concat([2, 1]).all());
+assert([4, 2, 1], per(4).concat(function(emit) { emit(2); emit(1); }).all());
+assert([4, 2, 1, 6], per(4).concat(per([2, 1, 6])).all());
+assert([4, 2, 1, 6, 5], per(4).concat(per([2, 1, 6])).concat(function(emit) { emit(5); }).all());
+assert([4, 2, 1, 6, 5, 3, 9], per(4).concat(per([2, 1, 6])).concat(function(emit) { emit(5); }).concat([3, 9]).all());
+
 if (failed === 0) {
     console.log('');
     console.log('All good');

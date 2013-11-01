@@ -68,6 +68,19 @@
         });
     };
 
+    Per.prototype.concat = function(second, secondThis) {        
+        if (second instanceof Per) {
+            second = second.forEach;
+        } else {
+            second = toFunc(second, secondThis);
+        }
+        var first = this.forEach;
+        return create(function(emit, value) {
+            first(emit, value);
+            second(emit, value);			
+        });
+    };
+
     Per.prototype.skip = function(count) {
         return this.per(function(emit, value) {
             if (count > 0) {

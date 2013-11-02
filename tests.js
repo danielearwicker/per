@@ -50,18 +50,11 @@ assert([false, true, true, false, true, false],
 // Reduce emits values by combining pairs of inputs
 var concat = function(left, right) { return left + ' ' + right; }
 
-// Single input is held but not emitted (waits for another)
-var wasCalled = false;
-per('hi').reduce(concat).forEach(function(value) {
-    wasCalled = true;
-});
-assert(false, wasCalled);
+// Changed in 0.1.7 - one input, one output (more consistent/intuitive/useful)
+assert(['hi'], per('hi').reduce(concat).all());
 
-// If two inputs, get one output
-assert(['hi ho'],
-   per(['hi', 'ho']).reduce(concat).all());
-// If three inputs get two outputs, and so on
-assert(['hi ho', 'hi ho silver'],
+assert(['hi', 'hi ho'], per(['hi', 'ho']).reduce(concat).all());
+assert(['hi', 'hi ho', 'hi ho silver'],
    per(['hi', 'ho', 'silver']).reduce(concat).all());
 
 // Sum (built on reduce)

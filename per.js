@@ -124,11 +124,8 @@
         var result = seed, started = arguments.length == 2;
         return this.per(function(emit, value) {
             result = started ? reducer(result, value) : value;
-            if (started) {
-                emit(result);
-            } else {
-                started = true;
-            }
+            emit(result);
+            started = true;
         });
     };
 

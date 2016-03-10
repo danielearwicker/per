@@ -38,13 +38,14 @@ assert('bye', per(['hi', 'oh', 'bye']).last());
 assert(5, per(5).last());
 
 // If we need to pass an array as a single input, wrap it in []:
-assert([1, 2, 3], per([[1, 2, 3]]).first());
+assert([1, 2, 3], per<void, number[]>([[1, 2, 3]]).first());
 
 // Collect results in an array
 assert([1, 2, 3], per([1, 2, 3]).all());
 
 // Map
 assert([2, 4, 6], per([1, 2, 3]).map(x => x*2).all());
+assert(["1", "2", "3"], per([1, 2, 3]).map(x => x + "").all());
 
 // Reduce emits values by combining pairs of inputs
 var concat = (left: string, right: string) => left + ' ' + right;

@@ -32,8 +32,8 @@ export class Per<TIn, TOut> {
         return per<TIn, TOut2>((emit, value) => first(firstOut => second(emit, firstOut), value));
     }
 
-    map(mapFunc: (value: TOut) => TOut) {
-        return this.per<TOut>((emit, value) => emit(mapFunc(value)));
+    map<TOut2>(mapFunc: (value: TOut) => TOut2) {
+        return this.per<TOut2>((emit, value) => emit(mapFunc(value)));
     }
 
     filter(predicate: (value: TOut) => boolean) {
